@@ -40,6 +40,35 @@ Stories run in a subprocess under `[stories] python`, so they can import anythin
 repository can. Results are cached in `docs-site/.cache`, keyed on the story file's source and
 the repository's commit; a failure is never cached.
 
+## Stories that call a live service
+
+A story that asks an outside service (a public catalogue, an API) will sometimes find it down.
+That is not a failure of the code the story shows, and it must not look like one:
+
+```python
+from autodocsite.story import service, story, view, table
+
+@story(id="search", title="Search the catalogue", page="api", summary="...")
+def search():
+    import mylib
+
+    with service("OpenNeuro"):                 # a transport failure in here becomes Unavailable
+        refs = mylib.search("openneuro", modality="eeg")
+
+    return view(output=[table("refs", ["id"], [[r.id] for r in refs])])
+```
+
+`service(...)` converts only transport failures (timeouts, refused connections, DNS, TLS,
+HTTP-client errors). Anything else still fails the story. You can also `raise Unavailable(...)`
+yourself.
+
+When a service does not answer, the page says so, shows the story's **last successful
+result with its date**, and the build does not count it as a failure (`--strict` included).
+The last result comes from the story cache, which the workflow keeps between runs.
+"Unavailable" never means "nothing exists".
+
+A story may sit on any page, a Markdown guide included: set `page` to that page's slug.
+
 ## A story in any other language
 
 ```toml

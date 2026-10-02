@@ -9,7 +9,7 @@ text. The look is [polarize-ui](https://github.com/polarizetech/polarize-ui)'s d
 repository holds the tooling and no CSS.
 
 ```bash
-pip install "git+https://github.com/polarizetech/automatic-documentation-site@v0.2.1"
+pip install "git+https://github.com/polarizetech/automatic-documentation-site@v0.3.0"
 
 docsite init path/to/repo --write    # look at the repository; write docs-site.toml and the workflow
 docsite dev path/to/repo             # build, open the browser, rebuild and reload as you edit
@@ -64,7 +64,8 @@ workflow.
   an optional hero snippet execute repository code, in a subprocess under the interpreter the
   repository names.
 - **A failure is shown, not dropped.** A story that raises appears on its page as failed, with
-  its traceback. A build problem is listed on the home page. `--strict` turns either into a
+  its traceback. A story whose outside service did not answer is shown as *unavailable*, with
+  its last successful result, and is not a failure. A build problem is listed on the home page. `--strict` turns either into a
   failed build.
 - **The design is pinned.** Each site names the polarize-ui release it builds against.
 - **No server required.** polarize-ui ships its scripts as ES modules, which a browser will not

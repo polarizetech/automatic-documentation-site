@@ -79,6 +79,7 @@ def dev(root: Path, port: int = 8300, open_browser: bool = True, refresh: bool =
         staging.rename(out)
         state["version"] += 1
         stories = f", {r['stories_ok']}/{r['stories']} stories passing" if r["stories"] else ""
+        stories += f", {r['stories_unavailable']} unavailable" if r.get("stories_unavailable") else ""
         print(f"built {r['pages']} pages{stories} in {r['seconds']}s" + (f"  ({len(r['problems'])} problems, shown on the home page)" if r["problems"] else ""), flush=True)
         return True
 

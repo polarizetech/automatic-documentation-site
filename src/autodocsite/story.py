@@ -38,6 +38,49 @@ from typing import Callable
 REGISTRY: list["Story"] = []
 
 
+class Unavailable(Exception):
+    """An outside service did not answer. NOT a failure of the story or the code it shows.
+
+    A story that depends on a live service raises this (or wraps the call in `service(...)`)
+    when the service is down, slow or rate-limiting. The page then says the service was
+    unavailable when it was built and shows the story's last successful result, dated. It is
+    never reported as a failed story, and `--strict` does not fail on it: a provider's outage
+    is not the documented repository's regression. "Unavailable" never means "nothing exists".
+    """
+
+
+_NETWORK_MODULES = ("httpx", "httpcore", "requests", "urllib", "urllib3", "aiohttp", "botocore", "socket", "ssl", "http")
+
+
+class service:
+    """`with service("OpenNeuro"): ...` turns a network failure inside the block into Unavailable.
+
+    Only transport failures are converted (timeouts, refused connections, DNS, TLS, HTTP-client
+    errors). Anything else, including the documented code raising its own error, still fails
+    the story as usual.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if exc is None or isinstance(exc, Unavailable):
+            return False
+        chain, seen = [], set()
+        e = exc
+        while e is not None and id(e) not in seen:
+            seen.add(id(e)); chain.append(e)
+            e = e.__cause__ or e.__context__
+        for e in chain:
+            mod = type(e).__module__.split(".")[0]
+            if isinstance(e, (TimeoutError, ConnectionError)) or mod in _NETWORK_MODULES:
+                raise Unavailable(f"{self.name} did not answer: {type(e).__name__}: {e}") from exc
+        return False
+
+
 @dataclass
 class Story:
     id: str

@@ -95,13 +95,15 @@ def cmd_build(a) -> int:
             raise SystemExit("refusing: docs-site.toml says `private = true`, and a private site is never published to GitHub Pages.")
     r = build(root, Path(a.out).resolve() if a.out else None, refresh=a.refresh)
     stories = f"{r['stories_ok']}/{r['stories']} stories passing, " if r["stories"] else ""
+    if r.get("stories_unavailable"):
+        stories += f"{r['stories_unavailable']} unavailable (a service did not answer), "
     print(f"{r['name']}: {r['pages']} pages, {stories}{r['seconds']}s, {r['layer']} → {r['dist']}")
     if a.open:
         import webbrowser
         webbrowser.open((Path(r["dist"]) / "index.html").as_uri())
     for p in r["problems"]:
         print(f"  problem  {p['file']}: {p['error']}", file=sys.stderr)
-    failed = r["stories"] - r["stories_ok"]
+    failed = r["stories"] - r["stories_ok"] - r.get("stories_unavailable", 0)   # an outage is not a failure
     if a.strict and (failed or r["problems"]):
         print(f"--strict: {failed} failed stories, {len(r['problems'])} problems", file=sys.stderr)
         return 1

@@ -100,6 +100,13 @@ def main(argv=None) -> int:
                     out["stories"].append({**rec, **meta, "cached": True})
                     print(f"  · {s.id:28s} cached", file=sys.stderr)
                     continue
+            last_good = None
+            if rec_path.exists():
+                try:
+                    prev = json.loads(rec_path.read_text())
+                    last_good = prev if prev.get("ok") else None
+                except Exception:
+                    last_good = None
             t = time.time()
             try:
                 v = s.fn()
@@ -107,6 +114,11 @@ def main(argv=None) -> int:
                        "seconds": round(time.time() - t, 2), "built": time.strftime("%Y-%m-%d %H:%M")}
                 rec_path.write_text(json.dumps(rec))
                 print(f"  ✓ {s.id:28s} {rec['seconds']:.1f}s", file=sys.stderr)
+            except S.Unavailable as ex:
+                # Not a failure and never cached: the last good result stays on disk and is shown, dated.
+                rec = {"key": key, "ok": False, "unavailable": True, "error": str(ex), "trace": "",
+                       "built": time.strftime("%Y-%m-%d %H:%M"), "last_good": last_good}
+                print(f"  ~ {s.id:28s} unavailable: {ex}", file=sys.stderr)
             except Exception as ex:
                 rec = {"key": key, "ok": False, "error": f"{type(ex).__name__}: {ex}", "trace": traceback.format_exc(),
                        "built": time.strftime("%Y-%m-%d %H:%M")}

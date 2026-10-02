@@ -333,3 +333,40 @@ def test_init_finds_loose_modules_two_folders_deep_and_names_the_site_from_the_r
     build(r)
     api = page(r, "apps-server.html")
     assert 'id="api-serve-run"' in api and "dev_check" not in api
+
+
+def test_an_unavailable_service_is_not_a_failure_and_shows_the_last_good_run(tmp_path):
+    story = '''
+        import os
+        from autodocsite.story import service, story, table, view
+
+        @story(id="live", title="Ask a service", summary="s", page="readme")
+        def live():
+            with service("Example API"):
+                if os.environ.get("DOCSITE_TEST_DOWN"):
+                    raise TimeoutError("timed out")
+            answer = "first-answer"
+            return view(output=[table("t", ["a"], [[answer]])])
+
+        @story(id="bug", title="A real bug", summary="s", page="readme")
+        def bug():
+            with service("Example API"):
+                raise KeyError("not a network problem")
+        '''
+    r = repo(tmp_path, {"README.md": "# u\n", "docs-site/stories/s.py": story},
+             f'[site]\nname = "u"\n[stories]\ndir = "docs-site/stories"\npython = "{sys.executable}"\n')
+    first = build(r)
+    assert (first["stories_ok"], first["stories_unavailable"]) == (1, 0)
+    os_environ = __import__("os").environ
+    os_environ["DOCSITE_TEST_DOWN"] = "1"
+    try:
+        (r / "README.md").write_text("# u\n\nchanged\n")          # any change: the story must re-run
+        second = build(r, refresh=True)
+    finally:
+        del os_environ["DOCSITE_TEST_DOWN"]
+    assert (second["stories_ok"], second["stories_unavailable"]) == (0, 1)
+    html = page(r, "readme.html")
+    assert "Service unavailable when this page was built" in html and "Example API did not answer: TimeoutError" in html
+    assert "first-answer" in html and "last successful run" in html     # the earlier result is shown, dated
+    assert "KeyError" in html and "Story failed" in html               # a non-network error still fails
+    assert main(["build", str(r), "--strict"]) == 1                    # ...because of the real bug only

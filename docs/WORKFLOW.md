@@ -12,7 +12,7 @@ permissions:
   contents: write
 jobs:
   docs:
-    uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.2.1
+    uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.3.0
     with:
       publish: branch
       setup: pip install -e .

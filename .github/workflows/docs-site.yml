@@ -2,7 +2,7 @@
 #
 #   jobs:
 #     docs:
-#       uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.2.1
+#       uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.3.0
 #       with: { publish: branch }
 #
 # It checks out the CALLING repository, builds its site from its docs-site.toml, and publishes:
@@ -37,7 +37,7 @@ on:
 env:
   # The release of the builder this workflow file belongs to. tests/test_release.py holds it
   # to src/autodocsite/__init__.py, so a tag always installs its own version.
-  DOCSITE_REF: v0.2.1
+  DOCSITE_REF: v0.3.0
 jobs:
   build:
     runs-on: ubuntu-latest

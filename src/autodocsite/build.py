@@ -166,6 +166,16 @@ def render_story(site: Site, s: dict) -> str:
         <p class="ui-example__summary">{mdlite.inline(s.get('summary', ''))}</p></div>
       <div class="ui-example__meta">{dataset_chip(cfg, s['dataset']) if s.get('dataset') else ''}{calls}</div>
     </div>"""
+    notice = ""
+    if s.get("unavailable"):
+        last = s.get("last_good")
+        notice = callout("Service unavailable when this page was built",
+                         f"<p><code>{esc(s.get('error', ''))}</code></p><p>This is an outage of the service, not a failure of the code shown. "
+                         + (f"Below is the last successful run, from {esc(last.get('built', 'an earlier build'))}." if last else
+                            "There is no earlier successful run to show.") + "</p>", "info")
+        if not last:
+            return f'<section class="ui-example" data-story="{esc(s["id"])}">{head}{codewin(s.get("code", ""), name=s.get("file") or s["id"])}<div style="height:14px"></div>{notice}</section>'
+        s = {**s, **{k: last[k] for k in ("view", "seconds", "built") if k in last}, "ok": True}
     if not s.get("ok"):
         return f"""<section class="ui-example">{head}
         <div class="ui-example__error"><span class="ui-example__failed">Story failed</span> <code>{esc(s.get('error', 'not run'))}</code>
@@ -182,7 +192,7 @@ def render_story(site: Site, s: dict) -> str:
                f'{esc(json.dumps(v["raw"], indent=2, default=str)[:20000])}</code></pre></details>')
     lang = s.get("lang") or ("python" if s.get("file", "").endswith(".py") or not s.get("file") else Path(s["file"]).suffix.lstrip("."))
     badge = f'<ui-tier tier="{esc(s["badge"])}"></ui-tier>' if s.get("badge") else ""
-    return f"""<section class="ui-example" data-story="{esc(s['id'])}">{head}
+    return f"""<section class="ui-example" data-story="{esc(s['id'])}">{head}{notice}
       <div class="ui-example__grid">
         {codewin(s.get('code', ''), name=s.get('file') or s['id'], lang=lang)}
         <div class="ui-example__io" data-ui-tabs>
@@ -317,10 +327,12 @@ def build_guides(site: Site):
         slug = slugs[f.resolve()]
         src = source_link(cfg, str(rel))
         lead = g.get("lead", "")
+        toc = [t for t in toc if t[0] <= 3][:60]
         html = page_head(title, mdlite.inline(lead) if lead else "") + f'<div class="ui-docsite__prose">{body}</div>'
+        html += stories_block(site, slug, toc)          # a story may sit on any page, a guide included
         html += f'<p class="ui-docsite__sublead" style="margin-top:28px">Rendered from <a href="{esc(src)}"><code>{esc(str(rel))}</code></a>.</p>' if src \
             else f'<p class="ui-docsite__sublead" style="margin-top:28px">Rendered from <code>{esc(str(rel))}</code>.</p>'
-        site.add(slug, title, html, group=group, eyebrow=group, toc=[t for t in toc if t[0] <= 3][:60],
+        site.add(slug, title, html, group=group, eyebrow=group, toc=toc,
                  nav=g.get("nav") or (title if len(title) <= 34 else rel.stem.replace("-", " ").replace("_", " ")))
         site.search.append({"t": title, "s": f"{group} · {rel}", "h": f"{slug}.html", "k": "Guide"})
         for lvl, hid, label in toc:
@@ -726,6 +738,7 @@ def build(root: Path, out: Path | None = None, refresh: bool = False) -> dict:
     (site.dist / "assets" / "site-data.js").write_text(
         "window.__docsiteData = " + json.dumps(site_data, separators=(",", ":")).replace("</", "<\\/") + ";\n")
     report = {"pages": len(site.pages), "stories": len(site.stories), "stories_ok": sum(1 for s in site.stories if s.get("ok")),
+              "stories_unavailable": sum(1 for s in site.stories if s.get("unavailable")),
               "problems": site.problems, "dist": str(site.dist), "seconds": round(time.time() - t0, 1), "layer": site.layer,
               "sha": site.sha, "private": cfg.private, "name": cfg.name, "repo": cfg.repo}
     (site.dist / "docs-site.json").write_text(json.dumps({k: v for k, v in report.items() if k != "dist"}, indent=1))
