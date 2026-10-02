@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "automatic-documentation-site"
+dynamic = ["version"]
+description = "A docs site generated from what a repository already says about itself: Markdown, source, a catalogue, and real calls run at build time."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Polarize Tech" }]
+# Stdlib only, on purpose: the builder runs in any CI job and inside any repository's own
+# interpreter (stories), so it must not bring dependencies that could clash with theirs.
+dependencies = []
+
+[project.scripts]
+docsite = "autodocsite.cli:main"
+
+[tool.hatch.version]
+path = "src/autodocsite/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autodocsite"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

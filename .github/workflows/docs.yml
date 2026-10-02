@@ -1,0 +1,19 @@
+# This repository's own docs site, built by its own shared workflow.
+name: docs-site
+# Manual for now: it needs the polarize-ui release that carries the docs layer (the pin in
+# docs-site.toml) and GitHub Pages enabled on this repository. Add `push: branches: [main]`
+# once both exist.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: docs-site
+  cancel-in-progress: true
+jobs:
+  docs:
+    uses: ./.github/workflows/docs-site.yml
+    with:
+      publish: pages

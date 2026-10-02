@@ -1,0 +1,103 @@
+# The shared build that every repository's installed docs-site workflow calls.
+#
+#   jobs:
+#     docs:
+#       uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.1.0
+#       with: { publish: branch }
+#
+# It checks out the CALLING repository, builds its site from its docs-site.toml, and publishes:
+#   branch    commit the built site to the `docs-site` branch of the same repository. For
+#             PRIVATE repositories: nothing leaves the repository; a tailnet host pulls it.
+#   pages     deploy to GitHub Pages. Refused when docs-site.toml says `private = true`.
+#   artifact  upload the site as a workflow artifact only.
+# The site is always uploaded as an artifact too, so a failed publish still leaves the build.
+name: docs-site (reusable)
+on:
+  workflow_call:
+    inputs:
+      publish:
+        description: "branch | pages | artifact"
+        type: string
+        default: artifact
+      setup:
+        description: "Shell commands that make this repository importable for its stories (e.g. `pip install -e .`)"
+        type: string
+        default: ""
+      python-version:
+        type: string
+        default: "3.12"
+      strict:
+        description: "Fail the job when any story fails or any problem is recorded"
+        type: boolean
+        default: false
+      working-directory:
+        description: "Where docs-site.toml is, relative to the repository root"
+        type: string
+        default: "."
+env:
+  # The release of the builder this workflow file belongs to. tests/test_release.py holds it
+  # to src/autodocsite/__init__.py, so a tag always installs its own version.
+  DOCSITE_REF: v0.1.0
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install automatic-documentation-site
+        run: pip install "git+https://github.com/polarizetech/automatic-documentation-site@${DOCSITE_REF}"
+      - name: Restore story and dataset caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ inputs.working-directory }}/docs-site/.cache
+            ~/.cache/dataset-fetch
+            ~/.cache/automatic-documentation-site
+          key: docs-site-${{ runner.os }}-${{ hashFiles(format('{0}/docs-site.toml', inputs.working-directory)) }}-${{ github.sha }}
+          restore-keys: |
+            docs-site-${{ runner.os }}-${{ hashFiles(format('{0}/docs-site.toml', inputs.working-directory)) }}-
+      - name: Prepare this repository for its stories
+        if: inputs.setup != ''
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.setup }}
+      - name: Build
+        working-directory: ${{ inputs.working-directory }}
+        run: docsite build . --out "$RUNNER_TEMP/site" --publish "${{ inputs.publish }}" ${{ inputs.strict && '--strict' || '' }}
+      - name: Upload the site (workflow artifact)
+        if: inputs.publish != 'pages'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-site
+          path: ${{ runner.temp }}/site
+          retention-days: 14
+      - name: Publish to the docs-site branch
+        if: inputs.publish == 'branch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP/site"
+          touch .nojekyll
+          git init -q -b docs-site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "docs-site: built from ${GITHUB_SHA::9}"
+          # One commit, replaced on every build: the branch holds the current site, not a history of sites.
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" docs-site
+      - name: Upload the site (Pages artifact)
+        if: inputs.publish == 'pages'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+  deploy-pages:
+    if: inputs.publish == 'pages'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

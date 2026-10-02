@@ -1,0 +1,39 @@
+# This repository documents itself with itself.
+[site]
+name = "docsite"
+kicker = "automatic-documentation-site"
+title = "A docs site generated from what a repository already says."
+tagline = "Markdown, source in any of three languages, a catalogue, and real calls run at build time. Nothing on a page is typed in by hand."
+repo = "polarizetech/automatic-documentation-site"
+branch = "main"
+private = false
+polarize_ui = "v0.5.13"
+
+[guides]
+include = ["README.md"]
+
+[[guide]]
+file = "docs/ONBOARDING.md"
+group = "Guides"
+[[guide]]
+file = "docs/CONFIG.md"
+title = "docs-site.toml"
+group = "Guides"
+[[guide]]
+file = "docs/STORIES.md"
+group = "Guides"
+[[guide]]
+file = "docs/WORKFLOW.md"
+group = "Guides"
+[[guide]]
+file = "docs/HOSTING.md"
+group = "Guides"
+
+[[source]]
+path = "src/autodocsite"
+language = "python"
+name = "autodocsite"
+slug = "api"
+title = "autodocsite"
+group = "Reference"
+lead = "The package behind `docsite`. `autodocsite.story` and `autodocsite.html` are the two modules a documented repository imports."
