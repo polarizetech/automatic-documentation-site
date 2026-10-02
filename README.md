@@ -9,7 +9,7 @@ text. The look is [polarize-ui](https://github.com/polarizetech/polarize-ui)'s d
 repository holds the tooling and no CSS.
 
 ```bash
-pip install "git+https://github.com/polarizetech/automatic-documentation-site@v0.2.0"
+pip install "git+https://github.com/polarizetech/automatic-documentation-site@v0.2.1"
 
 docsite init path/to/repo --write    # look at the repository; write docs-site.toml and the workflow
 docsite dev path/to/repo             # build, open the browser, rebuild and reload as you edit

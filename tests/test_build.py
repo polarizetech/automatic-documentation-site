@@ -298,3 +298,38 @@ def test_dev_watch_sees_source_changes_but_not_its_own_output(tmp_path):
     r = repo(tmp_path, {"README.md": "# p\n", "src/a.py": "x = 1\n", "docs-site/dist/index.html": "<p>", "docs-site/.cache/x.json": "{}",
                         "node_modules/m/index.js": "", "docs-site/stories/s.py": ""}, '[site]\nname = "p"\n')
     assert set(snapshot(r)) == {"README.md", "src/a.py", "docs-site.toml", "docs-site/stories/s.py"}
+
+
+def test_readme_html_images_survive_and_scripts_do_not(tmp_path):
+    r = repo(tmp_path, {
+        "README.md": '# r\n\n<p>\n  <img src="docs/a.png" alt="The board" width="240" onerror="alert(1)">\n</p>\n\n<sub>Photo: someone,\nas used in the post.</sub>\n',
+        "docs/a.png": "png",
+    }, '[site]\nname = "r"\n')
+    build(r)
+    html = page(r, "readme.html")
+    assert re.search(r'<img src="assets/img/[0-9a-f]{8}-a\.png" alt="The board" loading="lazy" style="width:240px;max-width:100%">', html)
+    assert "onerror" not in html
+    assert "<small>Photo: someone, as used in the post.</small>" in html
+
+
+def test_init_finds_loose_modules_two_folders_deep_and_names_the_site_from_the_remote(tmp_path, monkeypatch):
+    import autodocsite.config as C
+    r = repo(tmp_path, {
+        "README.md": "# tool\n",
+        "apps/server/serve.py": "def run():\n    pass\n", "apps/server/store.py": "def save():\n    pass\n",
+        "apps/server/dev_check.py": "def t():\n    pass\n",
+        "apps/web/vendor/x/a.py": "", "apps/web/vendor/x/b.py": "",
+    }, "")
+    (r / "docs-site.toml").unlink()
+    monkeypatch.setattr(C, "_git_remote", lambda root: ("owner/real-name", "main"))
+    monkeypatch.setattr(C, "_visibility", lambda repo: False)
+    found = detect(r)
+    assert found["name"] == "real-name"
+    assert [s["path"] for s in found["sources"]] == ["apps/server"]
+    cfg = tomllib.loads(propose(found))
+    assert cfg["site"]["name"] == "real-name" and cfg["site"]["private"] is False
+    assert cfg["source"][0]["recursive"] is False and "dev_check*.py" in cfg["source"][0]["exclude"]
+    (r / "docs-site.toml").write_text(propose(found))
+    build(r)
+    api = page(r, "apps-server.html")
+    assert 'id="api-serve-run"' in api and "dev_check" not in api

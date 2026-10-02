@@ -15,6 +15,7 @@ A repository with no source at all needs none of this; its site is its Markdown.
 from __future__ import annotations
 
 import ast
+import fnmatch
 import re
 from pathlib import Path
 
@@ -34,8 +35,11 @@ def first_para(doc: str) -> str:
 def files(root: Path, exts, exclude=(), recursive: bool = True) -> list[Path]:
     out = []
     for p in sorted(root.rglob("*") if recursive else root.glob("*")):
-        if p.suffix in exts and p.is_file() and not (set(p.relative_to(root).parts) & SKIP_DIRS) \
-                and not any(p.match(pat) for pat in exclude):
+        rel = p.relative_to(root)
+        # an exclude matches the file name (`test_*.py`) or its path under the source (`vendor/*`,
+        # where * also crosses folders)
+        if p.suffix in exts and p.is_file() and not (set(rel.parts) & SKIP_DIRS) \
+                and not any(p.match(pat) or fnmatch.fnmatch(rel.as_posix(), pat) for pat in exclude):
             out.append(p)
     return out
 
@@ -147,14 +151,15 @@ def read_typescript(root: Path, src: Path, prefix: str, exclude=(), recursive: b
         qual = "/".join(([prefix] if prefix else []) + list(rel.parts))
         for e in api:
             e["qual"] = f"{qual}#{e['name']}"
-        top = re.match(r"\s*/\*\*(.*?)\*/", text, re.S)
+        top = re.match(r"\s*/\*\*?(.*?)\*/", text, re.S)     # a file header: /** ... */ or /* ... */
         doc = "\n".join(re.sub(r"^\s*\* ?", "", l) for l in top.group(1).splitlines()).strip() if top else ""
         if not doc:
             lead = re.match(r"((?:\s*//[^\n]*\n)+)", text)
             doc = "\n".join(l.strip()[2:].strip() for l in lead.group(1).splitlines()) if lead else ""
         mods.append({"name": rel.name, "qual": qual, "path": str(f.relative_to(root)),
                      "summary": first_para(doc), "doc": doc, "api": api})
-    return {"language": "typescript", "doc": "", "modules": mods, "imports": []}
+    js = sum(m["path"].endswith((".js", ".mjs", ".jsx")) for m in mods)
+    return {"language": "javascript" if mods and js == len(mods) else "typescript", "doc": "", "modules": mods, "imports": []}
 
 
 # ── Swift ────────────────────────────────────────────────────────────────────────────────────

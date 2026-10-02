@@ -48,6 +48,25 @@ def _link(href):
     return _esc(LINKER(href) if LINKER else href)
 
 
+def _html_img(tag: str) -> str:
+    """A raw <img> tag from Markdown, re-written from its src/alt/width only (nothing else survives)."""
+    def attr(name):
+        m = re.search(rf'\b{name}\s*=\s*"([^"]*)"|\b{name}\s*=\s*\'([^\']*)\'', tag, re.I)
+        return (m.group(1) or m.group(2) or "") if m else ""
+    src = attr("src")
+    if not src:
+        return ""
+    if not src.startswith(("http://", "https://")):
+        if re.match(r"[a-zA-Z][a-zA-Z0-9+.-]*:", src):
+            return ""
+        src = IMAGER(src) if IMAGER else src
+    if not src:
+        return ""
+    width = attr("width")
+    style = f"width:{int(width)}px;max-width:100%" if width.isdigit() else "max-width:100%"
+    return f'<img src="{_esc(src)}" alt="{_esc(attr("alt"))}" loading="lazy" style="{style}">'
+
+
 def _image(m):
     src = m.group(2)
     if not src.startswith(("http://", "https://", "data:")) and IMAGER:
@@ -72,7 +91,20 @@ def render(md: str, *, toc: bool = False, drop_h1: bool = False):
             continue
         if re.fullmatch(r"</?(p|div|br|hr|center|picture|source|img|a|details|summary|sub|sup|h\d)\b[^>]*>(\s*</?\w+[^>]*>)*", s, re.I) \
                 or s.startswith("<!--"):
-            i += 1          # layout-only HTML and comments: nothing a reader of the text needs
+            # Layout-only HTML and comments carry nothing a reader of the text needs, EXCEPT an
+            # <img>: READMEs size pictures with raw tags. Keep the picture, drop the layout.
+            imgs = [_html_img(t) for t in re.findall(r"<img\b[^>]*>", s, re.I)]
+            if any(imgs):
+                out.append("<p>" + " ".join(x for x in imgs if x) + "</p>")
+            i += 1
+            continue
+        if re.fullmatch(r"<sub>.*</sub>", s, re.I | re.S) or (s.lower().startswith("<sub>") and "</sub>" not in s):
+            j = i
+            while j < len(lines) and "</sub>" not in lines[j].lower():
+                j += 1
+            text = re.sub(r"</?sub>", "", " ".join(l.strip() for l in lines[i:j + 1]), flags=re.I)
+            out.append(f'<p><small>{inline(text)}</small></p>')   # a caption under a picture
+            i = j + 1
             continue
         if re.fullmatch(r"(-{3,}|\*{3,}|_{3,})", s):
             out.append("<hr>")
