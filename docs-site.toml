@@ -7,7 +7,7 @@ tagline = "Markdown, source in any of three languages, a catalogue, and real cal
 repo = "polarizetech/automatic-documentation-site"
 branch = "main"
 private = false
-polarize_ui = "v0.5.13"
+polarize_ui = "v0.5.15"
 
 [guides]
 include = ["README.md"]

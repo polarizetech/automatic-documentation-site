@@ -14,7 +14,7 @@ sections are an error, so a typo is caught instead of ignored.
 | `repo` | none | `owner/name` on GitHub, for source links and the header icon. |
 | `branch` | `main` | The branch source links point at. |
 | `private` | `false` | `true` adds the PRIVATE flag and `noindex`, and **refuses GitHub Pages**. `docsite init` sets it from the repository's visibility, and to `true` when it cannot ask. |
-| `polarize_ui` | `v0.5.13` | The polarize-ui release to build against. |
+| `polarize_ui` | `v0.5.15` | The polarize-ui release to build against. |
 
 ## `[guides]` and `[[guide]]`: Markdown
 

@@ -11,7 +11,7 @@ docs/**/*.md). Full reference: docs/CONFIG.md.
     repo = "owner/name"                    # for source links
     branch = "main"
     private = true                         # PRIVATE pill, noindex, never GitHub Pages
-    polarize_ui = "v0.5.13"                # the design release to build against
+    polarize_ui = "v0.5.15"                # the design release to build against
 
     [guides]                               # Markdown -> pages
     include = ["README.md", "docs/**/*.md"]
@@ -60,7 +60,7 @@ except ModuleNotFoundError:  # Python < 3.11
     tomllib = None
 
 CONFIG_NAME = "docs-site.toml"
-DEFAULT_POLARIZE_UI = "v0.5.13"
+DEFAULT_POLARIZE_UI = "v0.5.15"
 
 CATALOGUE_FIELDS = {"name": "name", "version": "version", "summary": "job", "repo": "location.repo",
                     "path": "location.path", "import": "import", "requires": "requires",

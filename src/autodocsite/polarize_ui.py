@@ -20,7 +20,7 @@ import urllib.request
 from pathlib import Path
 
 #: The release used when docs-site.toml names none: the first with the docs layer.
-PINNED = "v0.5.13"
+PINNED = "v0.5.15"
 
 #: Everything the pages link. A tag missing any of these is too old for this site.
 FILES = ("design.css", "design.js", "tokens.json", "publication.css", "landing.css",
@@ -65,7 +65,7 @@ def _require(path: Path, label: str) -> None:
     missing = [f for f in FILES if not (path / f).exists()] + ([] if (path / "fonts").is_dir() else ["fonts/"])
     if missing:
         raise SystemExit(f"{label} has no {', '.join(missing)}: the docs layer needs polarize-ui with docs.css "
-                         f"(first released after v0.5.12).")
+                         f"(first released in v0.5.15).")
 
 
 def install(dest: Path, ref: str | None = None) -> str:
