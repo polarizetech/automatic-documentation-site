@@ -1,7 +1,12 @@
-# Hosting private sites on a tailnet
+# Optional: hosting several sites from one machine
+
+**You do not need any of this to read docs.** A built site opens from its folder
+(`docsite dev`, `docsite build --open`, `docsite open owner/name`). This page is for one case
+only: reading private repositories' docs from *another device* (a phone, a second machine),
+which means one machine has to serve them over a private network.
 
 A private repository's site is never put on the web. Its workflow commits the built site to a
-`docs-site` branch; a machine on your tailnet pulls those branches and serves them.
+`docs-site` branch; a machine on your private network pulls those branches and serves them.
 
 ## The host
 
@@ -28,7 +33,7 @@ docsite serve --sync-every 300  # serve on 127.0.0.1:8251 and re-sync every 5 mi
 `/` lists the sites; `/<path>/` is a site. The server binds to localhost, lists no
 directories, and sends `noindex`.
 
-## Tailscale
+## Exposing it on a private network (Tailscale shown)
 
 Mount it on a **tailnet-only** listener:
 

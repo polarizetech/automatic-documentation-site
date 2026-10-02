@@ -12,7 +12,7 @@ permissions:
   contents: write
 jobs:
   docs:
-    uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.1.1
+    uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.2.0
     with:
       publish: branch
       setup: pip install -e .
@@ -34,8 +34,9 @@ here reaches a repository when it bumps the tag.
 **`branch` (private repositories).** The built site is committed to a `docs-site` branch of
 the same repository, as a single commit replaced on every build. It needs
 `permissions: contents: write`. A push made with the workflow's token does not start another
-workflow, and the trigger is the default branch only, so it cannot loop. Read it by pulling the
-branch on a tailnet host ([HOSTING.md](HOSTING.md)).
+workflow, and the trigger is the default branch only, so it cannot loop. Read it with
+`docsite open owner/name`: it fetches the branch with your own git access and opens
+`index.html` from the folder. No server is involved.
 
 **`pages` (public repositories).** Deployed to GitHub Pages. Enable Pages once, with source
 "GitHub Actions", in the repository's settings. It needs `pages: write` and `id-token: write`.
@@ -48,8 +49,8 @@ too, so a failed publish still leaves the build.
 
 Stories run in the job's Python after `setup`. Datasets they download are cached between runs
 (`docs-site/.cache`, `~/.cache/dataset-fetch`). A story that needs data or hardware only your
-machine has will fail in CI and show as failed on the page; build that repository on the
-tailnet host instead ([HOSTING.md](HOSTING.md), `dir =`).
+machine has will fail in CI and show as failed on the page; build that repository locally
+instead (`docsite build`), and set `publish: artifact` or remove the workflow.
 
 ## Releases
 

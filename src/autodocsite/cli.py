@@ -1,9 +1,10 @@
 """docsite: generate a repository's docs site, install its workflow, and host the results.
 
     docsite init <repo>            look at a repository; write docs-site.toml and the workflow
-    docsite build [repo]           build the site into <repo>/docs-site/dist
-    docsite sync                   (host) pull every configured repository's built site
-    docsite serve                  (host) serve them on localhost for a tailnet-only mount
+    docsite build [repo]           build the site into <repo>/docs-site/dist (open index.html: no server needed)
+    docsite dev [repo]             build, serve on localhost, open the browser, rebuild on change
+    docsite open <owner/name>      fetch a repository's built site (its docs-site branch) and open it
+    docsite sync / serve           optional: host several repositories' sites on one machine (docs/HOSTING.md)
 """
 from __future__ import annotations
 
@@ -61,7 +62,7 @@ def cmd_init(a) -> int:
     wf = WORKFLOW.format(
         branch=found["branch"], version=__version__, publish=publish,
         permissions="  contents: write" if publish == "branch" else "  contents: read\n  pages: write\n  id-token: write",
-        publish_note="commits the built site to the docs-site branch; the tailnet host pulls it" if publish == "branch"
+        publish_note="commits the built site to the docs-site branch; read it with `docsite open owner/name`" if publish == "branch"
         else "deploys to GitHub Pages (enable Pages with source 'GitHub Actions' in the repository settings)")
     wf_path = root / ".github" / "workflows" / "docs-site.yml"
     if not a.write:
@@ -81,7 +82,7 @@ def cmd_init(a) -> int:
     if add:
         gi.write_text("\n".join(have + ["", "# automatic-documentation-site: build output and story cache"] + add) + "\n")
         print(f"updated      .gitignore (+{', '.join(add)})")
-    print(f"\nnext: docsite build {a.repo}")
+    print(f"\nnext: docsite dev {a.repo}")
     return 0
 
 
@@ -95,12 +96,43 @@ def cmd_build(a) -> int:
     r = build(root, Path(a.out).resolve() if a.out else None, refresh=a.refresh)
     stories = f"{r['stories_ok']}/{r['stories']} stories passing, " if r["stories"] else ""
     print(f"{r['name']}: {r['pages']} pages, {stories}{r['seconds']}s, {r['layer']} → {r['dist']}")
+    if a.open:
+        import webbrowser
+        webbrowser.open((Path(r["dist"]) / "index.html").as_uri())
     for p in r["problems"]:
         print(f"  problem  {p['file']}: {p['error']}", file=sys.stderr)
     failed = r["stories"] - r["stories_ok"]
     if a.strict and (failed or r["problems"]):
         print(f"--strict: {failed} failed stories, {len(r['problems'])} problems", file=sys.stderr)
         return 1
+    return 0
+
+
+def cmd_dev(a) -> int:
+    from .dev import dev
+    dev(Path(a.repo), a.port, not a.no_open, a.refresh)
+    return 0
+
+
+def cmd_open(a) -> int:
+    """Read a repository's built docs with no server: fetch its docs-site branch, open the folder."""
+    import webbrowser
+    from . import host
+    target = Path(a.repo).expanduser()
+    if (target / "docs-site" / "dist" / "index.html").exists():      # a local checkout that has been built
+        index = target / "docs-site" / "dist" / "index.html"
+    elif "/" in a.repo and not target.exists():
+        site = {"repo": a.repo, "path": a.repo.split("/")[-1], "branch": a.branch, "local": host.SITES / a.repo.split("/")[-1]}
+        r = host.sync({"site": [site]})[0]
+        print(f"{r['path']}: {r['status']} {r['detail']}")
+        if r["status"] == "unavailable":
+            raise SystemExit(f"could not fetch the {a.branch} branch of {a.repo}. Has its docs-site workflow run, and can this machine's git read the repository?")
+        index = site["local"] / "index.html"
+    else:
+        raise SystemExit(f"{a.repo}: not a built checkout (run `docsite build {a.repo}`) and not an owner/name on GitHub")
+    print(index)
+    if not a.no_open:
+        webbrowser.open(index.resolve().as_uri())
     return 0
 
 
@@ -132,12 +164,24 @@ def main(argv=None) -> int:
     p.add_argument("--out", help="output directory (default <repo>/docs-site/dist)")
     p.add_argument("--refresh", action="store_true", help="re-run every story, ignoring the cache")
     p.add_argument("--strict", action="store_true", help="exit 1 if any story failed or any problem was recorded")
+    p.add_argument("--open", action="store_true", help="open the built site in the browser (from the folder; no server)")
     p.add_argument("--publish", choices=["branch", "pages", "artifact"], help="where the result is going; pages is refused for a private site")
     p.set_defaults(fn=cmd_build)
-    p = sub.add_parser("sync", help="(host) pull every configured repository's built site")
+    p = sub.add_parser("dev", help="build, serve on localhost, open the browser, rebuild on change")
+    p.add_argument("repo", nargs="?", default=".")
+    p.add_argument("--port", type=int, default=8300, help="first port to try (default 8300)")
+    p.add_argument("--no-open", action="store_true", help="do not open the browser")
+    p.add_argument("--refresh", action="store_true", help="re-run every story on the first build")
+    p.set_defaults(fn=cmd_dev)
+    p = sub.add_parser("open", help="fetch a repository's built site (docs-site branch) and open it from the folder")
+    p.add_argument("repo", help="owner/name on GitHub, or a local checkout that has been built")
+    p.add_argument("--branch", default="docs-site")
+    p.add_argument("--no-open", action="store_true", help="only fetch and print the path")
+    p.set_defaults(fn=cmd_open)
+    p = sub.add_parser("sync", help="(optional host) pull every configured repository's built site")
     p.add_argument("--hosts")
     p.set_defaults(fn=cmd_sync)
-    p = sub.add_parser("serve", help="(host) serve the synced sites on localhost")
+    p = sub.add_parser("serve", help="(optional host) serve the synced sites on localhost")
     p.add_argument("--hosts")
     p.add_argument("--port", type=int)
     p.add_argument("--sync-every", type=int, default=0, metavar="SECONDS", help="also sync on this interval")

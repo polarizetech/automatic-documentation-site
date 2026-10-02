@@ -1,4 +1,4 @@
-"""The tailnet host: pull every repository's built site and serve them from one place.
+"""Optional host: pull several repositories' built sites and serve them from one machine.
 
 A PRIVATE repository's site is never published to the web. Its workflow commits the built site
 to a `docs-site` branch in the same private repository; the machine that serves the tailnet

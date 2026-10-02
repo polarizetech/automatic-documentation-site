@@ -45,11 +45,14 @@ a `lead`, and map the catalogue's fields. Do not write prose here that the repos
 already say; if a page needs an explanation, the explanation belongs in a docstring or a
 Markdown file in the repository.
 
-Build and read it:
+Read it as you edit:
 
 ```bash
-docsite build <repo>
+docsite dev <repo>
 ```
+
+It opens the browser and reloads the page whenever the config, the Markdown, the source or a
+story changes.
 
 ## 3. Stories
 
@@ -75,7 +78,7 @@ propose a reader here instead.
 
 ## 5. Check
 
-- Cold build: `docsite build <repo> --refresh --strict`. Every story passes or is knowingly
+- Cold build: `docsite build <repo> --refresh --strict`, then open `docs-site/dist/index.html` straight from the folder. Every story passes or is knowingly
   left failing.
 - Read every page once, in light and dark, and at phone width.
 - Search for a function by its short name.
@@ -89,8 +92,8 @@ whatever makes the repository importable for its stories.
 
 - Public repository: `publish: pages`. **ASK** the owner to enable GitHub Pages (source:
   GitHub Actions) in the repository settings; it cannot be done from the workflow.
-- Private repository: `publish: branch`. Then add the repository to the tailnet host's
-  `hosts.toml` ([HOSTING.md](HOSTING.md)). **ASK** before changing what a host serves.
+- Private repository: `publish: branch`. The built site is committed to the `docs-site`
+  branch of the same repository; anyone with access reads it with `docsite open owner/name`.
 
 **ASK** before committing or pushing to the repository: pushing the workflow starts it.
 

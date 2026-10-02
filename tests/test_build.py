@@ -25,7 +25,7 @@ def fake_polarize_ui(tmp_path, monkeypatch):
     ui = tmp_path / "_polarize-ui"
     (ui / "fonts").mkdir(parents=True)
     for f in polarize_ui.FILES:
-        (ui / f).write_text("")
+        (ui / f).write_text("{}" if f.endswith(".json") else "")
     (ui / "fonts" / "inter.woff2").write_text("")
     monkeypatch.setenv("POLARIZE_UI", str(ui))
 
@@ -268,3 +268,33 @@ def test_markdown_never_injects_markup():
     assert "<img src=x" not in out and "&lt;img" in out
     assert "<strong>b</strong>" in out and "<code>&lt;i&gt;</code>" in out
     assert "javascript:" not in out and '<a href="#">x</a>' in out
+
+
+def test_classic_conversion_keeps_the_code_and_refuses_what_it_cannot_convert():
+    src = "const BASE = new URL('.', import.meta.url).href;\nexport let T = null;\nexport async function load() {}\nexport const f = () => 1;\nawait load();\n"
+    out = polarize_ui.classic("x.js", src)
+    assert "export" not in out.split("*/", 1)[1] and "import.meta" not in out.split("*/", 1)[1]
+    assert "new URL('.', __src)" in out and "let T = null;" in out and "await load();" in out
+    assert out.strip().endswith("console.error('x.js', e));")
+    for bad in ("import { a } from './a.js'\n", "export default 1\n", "const m = await import('./a.js')\n", "export { a }\n"):
+        with pytest.raises(SystemExit):
+            polarize_ui.classic("x.js", bad)
+
+
+def test_a_built_site_needs_no_server(tmp_path):
+    r = repo(tmp_path, {"README.md": "# p\n\n## Part\n"}, '[site]\nname = "p"\n')
+    build(r)
+    idx = page(r, "index.html")
+    assert 'type="module"' not in idx                              # modules cannot load from file://
+    assert all(f'src="assets/{n}"' in idx for n in ("site-data.js", "docs.classic.js", "design.classic.js", "cellfield.classic.js"))
+    assert "__docsite/version" not in idx                          # the dev reload script is dev-only
+    data = page(r, "assets/site-data.js")
+    assert data.startswith("window.__docsiteData = ") and '"search.json"' in data and '"Part"' in data
+    assert re.search(r'(href|src)="/', idx) is None                # every link is relative: works at any path, and from a folder
+
+
+def test_dev_watch_sees_source_changes_but_not_its_own_output(tmp_path):
+    from autodocsite.dev import snapshot
+    r = repo(tmp_path, {"README.md": "# p\n", "src/a.py": "x = 1\n", "docs-site/dist/index.html": "<p>", "docs-site/.cache/x.json": "{}",
+                        "node_modules/m/index.js": "", "docs-site/stories/s.py": ""}, '[site]\nname = "p"\n')
+    assert set(snapshot(r)) == {"README.md", "src/a.py", "docs-site.toml", "docs-site/stories/s.py"}

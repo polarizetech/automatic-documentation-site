@@ -1,8 +1,8 @@
 # CLAUDE.md — automatic-documentation-site
 
 A docs site for any repository, generated from what the repository already says about itself.
-`docsite init / build / sync / serve`, plus the shared GitHub workflow every onboarded
-repository calls.
+`docsite init / dev / build / open`, plus the shared GitHub workflow every onboarded
+repository calls. (`sync` / `serve` are an optional multi-site host.)
 
 **When handed a repository to document, follow [`docs/ONBOARDING.md`](docs/ONBOARDING.md).**
 
@@ -20,9 +20,14 @@ configuration (`~/.config/automatic-documentation-site/hosts.toml`), never commi
 2. **Reading is not running.** Source readers parse; they never import or execute. Only
    stories, a page plugin and the hero snippet run repository code, in `runner.py`, in a
    subprocess under the repository's interpreter.
-3. **No CSS or JS here.** The page layer is polarize-ui's docs layer (`docs.css`, `docs.js`),
-   fetched at a pinned release (`polarize_ui.py`). A look-and-feel change belongs in
-   polarize-ui, released, then pinned. `html.py` writes markup for its classes.
+3. **No CSS or UI code here.** The page layer is polarize-ui's docs layer (`docs.css`,
+   `docs.js`), fetched at a pinned release (`polarize_ui.py`). A look-and-feel change belongs
+   in polarize-ui, released, then pinned. `html.py` writes markup for its classes. The one
+   thing done to polarize-ui's scripts is mechanical: `polarize_ui.classic()` turns each ES
+   module into a classic script so a site opens from a folder, and it refuses (by name) any
+   module syntax it cannot convert faithfully. Do not grow it into a place for behaviour.
+8. **A built site must work from `file://`.** No absolute links, no module scripts, no
+   runtime fetch that is not embedded in `site-data.js`. A test asserts it.
 4. **A failure is shown, never dropped**: a failed story on its page, a build problem on the
    home page. Do not add a code path that skips one silently.
 5. **Private stays private.** `private = true` (and unknown visibility) must keep refusing
@@ -43,7 +48,8 @@ configuration (`~/.config/automatic-documentation-site/hosts.toml`), never commi
 | `src/autodocsite/story.py` | the story decorator and plot-spec helpers (importable by stories) |
 | `src/autodocsite/runner.py` | runs stories and plugins in the repository's interpreter |
 | `src/autodocsite/html.py` | component helpers (importable by page plugins) |
-| `src/autodocsite/host.py` | `sync` / `serve` for the tailnet host |
+| `src/autodocsite/dev.py` | `docsite dev`: local server, file watcher, live reload |
+| `src/autodocsite/host.py` | optional: `sync` / `serve`, hosting several sites from one machine |
 | `.github/workflows/docs-site.yml` | the shared workflow (`workflow_call`) |
 
 Tests: `pytest` (no network; polarize-ui is faked).

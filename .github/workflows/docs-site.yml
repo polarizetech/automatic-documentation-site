@@ -2,12 +2,12 @@
 #
 #   jobs:
 #     docs:
-#       uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.1.1
+#       uses: polarizetech/automatic-documentation-site/.github/workflows/docs-site.yml@v0.2.0
 #       with: { publish: branch }
 #
 # It checks out the CALLING repository, builds its site from its docs-site.toml, and publishes:
 #   branch    commit the built site to the `docs-site` branch of the same repository. For
-#             PRIVATE repositories: nothing leaves the repository; a tailnet host pulls it.
+#             PRIVATE repositories: nothing leaves the repository; `docsite open owner/name` reads it.
 #   pages     deploy to GitHub Pages. Refused when docs-site.toml says `private = true`.
 #   artifact  upload the site as a workflow artifact only.
 # The site is always uploaded as an artifact too, so a failed publish still leaves the build.
@@ -37,7 +37,7 @@ on:
 env:
   # The release of the builder this workflow file belongs to. tests/test_release.py holds it
   # to src/autodocsite/__init__.py, so a tag always installs its own version.
-  DOCSITE_REF: v0.1.1
+  DOCSITE_REF: v0.2.0
 jobs:
   build:
     runs-on: ubuntu-latest
